@@ -49,30 +49,39 @@ export type Database = {
       }
       telegram_settings: {
         Row: {
+          api_hash: string | null
+          api_id: string | null
           auto_send_enabled: boolean
           auto_send_time: string
-          bot_token: string
+          bot_token: string | null
           chat_id: string
           created_at: string
           id: string
+          session_string: string | null
           updated_at: string
         }
         Insert: {
+          api_hash?: string | null
+          api_id?: string | null
           auto_send_enabled?: boolean
           auto_send_time?: string
-          bot_token: string
+          bot_token?: string | null
           chat_id: string
           created_at?: string
           id?: string
+          session_string?: string | null
           updated_at?: string
         }
         Update: {
+          api_hash?: string | null
+          api_id?: string | null
           auto_send_enabled?: boolean
           auto_send_time?: string
-          bot_token?: string
+          bot_token?: string | null
           chat_id?: string
           created_at?: string
           id?: string
+          session_string?: string | null
           updated_at?: string
         }
         Relationships: []

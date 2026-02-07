@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Client } from "jsr:@mtkruto/mtkruto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,32 +12,30 @@ serve(async (req) => {
   }
 
   try {
-    const { botToken, chatId } = await req.json();
+    const { apiId, apiHash, sessionString, chatId } = await req.json();
 
-    if (!botToken || !chatId) {
-      throw new Error("يرجى إدخال Bot Token و Chat ID");
+    if (!apiId || !apiHash || !sessionString || !chatId) {
+      throw new Error("يرجى إدخال جميع البيانات المطلوبة");
     }
 
-    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const testMessage = "✅ رسالة اختبار من مُنشئ المحتوى اليومي\n\nتم إعداد الاتصال بنجاح!";
-
-    const response = await fetch(telegramUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: testMessage,
-      }),
+    const client = new Client({
+      storage: null,
+      apiId: Number(apiId),
+      apiHash: apiHash,
     });
 
-    const result = await response.json();
+    await client.importAuthString(sessionString);
+    await client.start();
 
-    if (!result.ok) {
-      console.error("Telegram API error:", result);
-      throw new Error(result.description || "فشل الاتصال بتلجرام");
+    const testMessage = "✅ رسالة اختبار من مُنشئ المحتوى اليومي\n\nتم إعداد الاتصال بنجاح!";
+
+    try {
+      await client.sendMessage(chatId, testMessage);
+    } finally {
+      await client.disconnect();
     }
 
-    console.log("Test message sent successfully");
+    console.log("Test message sent successfully via User API");
 
     return new Response(
       JSON.stringify({ success: true }),

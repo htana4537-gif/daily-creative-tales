@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Client } from "jsr:@mtkruto/mtkruto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,23 @@ const CHARACTERS: Record<string, { name: string; nameEn: string }> = {
   ibn_sina: { name: "ابن سينا", nameEn: "Ibn Sina" },
   ibn_khaldun: { name: "ابن خلدون", nameEn: "Ibn Khaldun" },
 };
+
+async function sendViaMTKruto(settings: any, message: string) {
+  const client = new Client({
+    storage: null,
+    apiId: Number(settings.api_id),
+    apiHash: settings.api_hash,
+  });
+
+  await client.importAuthString(settings.session_string);
+  await client.start();
+
+  try {
+    await client.sendMessage(settings.chat_id, message);
+  } finally {
+    await client.disconnect();
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -42,6 +60,10 @@ serve(async (req) => {
 
     if (settingsError || !settings) {
       throw new Error("يرجى إعداد إعدادات تلجرام أولاً");
+    }
+
+    if (!settings.api_id || !settings.api_hash || !settings.session_string) {
+      throw new Error("يرجى إدخال API ID و API Hash و Session String في الإعدادات");
     }
 
     const charData = CHARACTERS[character] || { name: character, nameEn: character };
@@ -83,34 +105,15 @@ serve(async (req) => {
 
     // Build the message
     const message = `/create
-
 عنوان: ${charData.name}
-
 وصف: ${description}
-
 نوع_الصوت: ${voiceType}
-
 عدد_المشاهد: ${scenesCount}
-
 الطول: ${duration}`;
 
-    // Send to Telegram
-    const telegramUrl = `https://api.telegram.org/bot${settings.bot_token}/sendMessage`;
-    const telegramResponse = await fetch(telegramUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: settings.chat_id,
-        text: message,
-        parse_mode: "HTML",
-      }),
-    });
-
-    const telegramResult = await telegramResponse.json();
-
-    if (!telegramResult.ok) {
-      throw new Error(telegramResult.description || "فشل إرسال الرسالة إلى تلجرام");
-    }
+    // Send via MTKruto (User API)
+    console.log("Sending message via User API (MTKruto)...");
+    await sendViaMTKruto(settings, message);
 
     // Save to history
     await supabase.from("messages").insert({
@@ -122,7 +125,7 @@ serve(async (req) => {
       status: "sent",
     });
 
-    console.log("Message sent successfully to Telegram");
+    console.log("Message sent successfully via User API");
 
     return new Response(
       JSON.stringify({ success: true, message: "تم الإرسال بنجاح" }),
