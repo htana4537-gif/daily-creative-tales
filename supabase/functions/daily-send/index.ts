@@ -34,7 +34,8 @@ async function sendViaMTKruto(settings: any, message: string) {
   await client.start();
 
   try {
-    await client.sendMessage(settings.chat_id, message);
+    const chatId = /^-?\d+$/.test(settings.chat_id) ? Number(settings.chat_id) : settings.chat_id;
+    await client.sendMessage(chatId, message);
   } finally {
     await client.disconnect();
   }

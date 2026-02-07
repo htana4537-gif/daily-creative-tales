@@ -30,7 +30,8 @@ serve(async (req) => {
     const testMessage = "✅ رسالة اختبار من مُنشئ المحتوى اليومي\n\nتم إعداد الاتصال بنجاح!";
 
     try {
-      await client.sendMessage(chatId, testMessage);
+    const parsedChatId = /^-?\d+$/.test(chatId) ? Number(chatId) : chatId;
+    await client.sendMessage(parsedChatId, testMessage);
     } finally {
       await client.disconnect();
     }
