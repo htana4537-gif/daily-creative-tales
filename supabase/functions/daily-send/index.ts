@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Client } from "jsr:@mtkruto/mtkruto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,14 +23,22 @@ const CHARACTERS = [
 const VOICE_TYPES = ["male_arabic", "female_arabic"];
 const DURATIONS = [15, 30, 60];
 
-// Random human-like variations for the message
-const INTRO_PHRASES = [
-  "",
-  "💡 ",
-  "✨ ",
-  "🎬 ",
-  "📽️ ",
-];
+async function sendViaMTKruto(settings: any, message: string) {
+  const client = new Client({
+    storage: null,
+    apiId: Number(settings.api_id),
+    apiHash: settings.api_hash,
+  });
+
+  await client.importAuthString(settings.session_string);
+  await client.start();
+
+  try {
+    await client.sendMessage(settings.chat_id, message);
+  } finally {
+    await client.disconnect();
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -51,7 +60,7 @@ serve(async (req) => {
       .single();
 
     if (settingsError || !settings) {
-      console.log("No telegram settings found or auto-send not configured");
+      console.log("No telegram settings found");
       return new Response(
         JSON.stringify({ success: false, message: "لم يتم إعداد الإعدادات" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -66,12 +75,15 @@ serve(async (req) => {
       );
     }
 
+    if (!settings.api_id || !settings.api_hash || !settings.session_string) {
+      throw new Error("يرجى إدخال بيانات User API في الإعدادات");
+    }
+
     // Pick random values
     const randomChar = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
     const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
-    const randomScenes = Math.floor(Math.random() * 8) + 3; // 3-10 scenes
+    const randomScenes = Math.floor(Math.random() * 8) + 3;
     const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
-    const randomIntro = INTRO_PHRASES[Math.floor(Math.random() * INTRO_PHRASES.length)];
 
     // Generate creative description using AI
     let description = randomChar.name;
@@ -91,8 +103,7 @@ serve(async (req) => {
                 role: "system",
                 content: `أنت كاتب إبداعي متخصص في كتابة أوصاف قصيرة وجذابة للشخصيات التاريخية. 
 اكتب وصفاً موجزاً (جملة أو جملتين فقط) بأسلوب شيق ومختلف في كل مرة.
-اجعل الوصف يبدو طبيعياً وكأنه مكتوب من شخص عادي، وليس من روبوت.
-لا تستخدم كلمات رسمية جداً، اجعله بسيطاً وممتعاً.`,
+اجعل الوصف يبدو طبيعياً وكأنه مكتوب من شخص عادي، وليس من روبوت.`,
               },
               {
                 role: "user",
@@ -111,36 +122,16 @@ serve(async (req) => {
       }
     }
 
-    // Build a natural-looking message (like a user would type it)
-    const message = `${randomIntro}/create
-
+    const message = `/create
 عنوان: ${randomChar.name}
-
 وصف: ${description}
-
 نوع_الصوت: ${randomVoice}
-
 عدد_المشاهد: ${randomScenes}
-
 الطول: ${randomDuration}`;
 
-    // Send to Telegram
-    const telegramUrl = `https://api.telegram.org/bot${settings.bot_token}/sendMessage`;
-    const telegramResponse = await fetch(telegramUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: settings.chat_id,
-        text: message,
-      }),
-    });
-
-    const telegramResult = await telegramResponse.json();
-
-    if (!telegramResult.ok) {
-      console.error("Telegram error:", telegramResult);
-      throw new Error(telegramResult.description || "فشل إرسال الرسالة إلى تلجرام");
-    }
+    // Send via MTKruto (User API)
+    console.log("Sending daily auto-message via User API...");
+    await sendViaMTKruto(settings, message);
 
     // Save to history
     await supabase.from("messages").insert({
