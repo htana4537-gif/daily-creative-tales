@@ -1,14 +1,70 @@
-export const HISTORICAL_CHARACTERS = [
-  { id: 'cleopatra', name: 'كليوباترا', nameEn: 'Cleopatra' },
-  { id: 'pharaoh', name: 'فرعون', nameEn: 'Pharaoh' },
-  { id: 'nefertiti', name: 'نفرتيتي', nameEn: 'Nefertiti' },
-  { id: 'saladin', name: 'صلاح الدين', nameEn: 'Saladin' },
-  { id: 'tutankhamun', name: 'توت عنخ آمون', nameEn: 'Tutankhamun' },
-  { id: 'hatshepsut', name: 'حتشبسوت', nameEn: 'Hatshepsut' },
-  { id: 'ramses', name: 'رمسيس الثاني', nameEn: 'Ramses II' },
-  { id: 'harun_rashid', name: 'هارون الرشيد', nameEn: 'Harun al-Rashid' },
-  { id: 'ibn_sina', name: 'ابن سينا', nameEn: 'Ibn Sina' },
-  { id: 'ibn_khaldun', name: 'ابن خلدون', nameEn: 'Ibn Khaldun' },
+export interface SubCategory {
+  id: string;
+  name: string;
+}
+
+export interface MainCategory {
+  id: string;
+  name: string;
+  icon: string;
+  subcategories: SubCategory[];
+}
+
+export const CONTENT_CATEGORIES: MainCategory[] = [
+  {
+    id: 'history',
+    name: 'تاريخ',
+    icon: '🏛️',
+    subcategories: [
+      { id: 'historical_figure', name: 'شخصية تاريخية' },
+      { id: 'companion', name: 'شخص من الصحابة' },
+      { id: 'past_in_present', name: 'لو شخص من الماضي موجود حالياً' },
+      { id: 'historical_event', name: 'حدث تاريخي' },
+      { id: 'ancient_nation', name: 'دولة تاريخية قديمة' },
+    ],
+  },
+  {
+    id: 'sports',
+    name: 'رياضة',
+    icon: '⚽',
+    subcategories: [
+      { id: 'player', name: 'لاعب' },
+      { id: 'coach', name: 'مدرب' },
+      { id: 'team', name: 'فريق' },
+      { id: 'football_event', name: 'حدث مؤثر في كرة القدم' },
+    ],
+  },
+  {
+    id: 'stories',
+    name: 'قصص',
+    icon: '📖',
+    subcategories: [
+      { id: 'children_story', name: 'قصة للأطفال' },
+      { id: 'horror_story', name: 'قصة رعب' },
+      { id: 'short_action', name: 'قصة حماسية قصيرة' },
+    ],
+  },
+  {
+    id: 'science',
+    name: 'علوم',
+    icon: '🔬',
+    subcategories: [
+      { id: 'mountains', name: 'معلومات عن جبال' },
+      { id: 'seas', name: 'معلومات عن بحار' },
+      { id: 'experiments', name: 'تجارب علمية' },
+      { id: 'scientists', name: 'علماء' },
+    ],
+  },
+  {
+    id: 'pov',
+    name: 'POV',
+    icon: '👁️',
+    subcategories: [
+      { id: 'pov_past', name: 'أنت في الماضي' },
+      { id: 'pov_future', name: 'أنت في المستقبل' },
+      { id: 'pov_videogame', name: 'أنت في لعبة فيديو' },
+    ],
+  },
 ];
 
 export const VOICE_TYPES = [

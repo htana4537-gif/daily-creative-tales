@@ -7,17 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CHARACTERS = [
-  { id: "cleopatra", name: "كليوباترا", nameEn: "Cleopatra" },
-  { id: "pharaoh", name: "فرعون", nameEn: "Pharaoh" },
-  { id: "nefertiti", name: "نفرتيتي", nameEn: "Nefertiti" },
-  { id: "saladin", name: "صلاح الدين", nameEn: "Saladin" },
-  { id: "tutankhamun", name: "توت عنخ آمون", nameEn: "Tutankhamun" },
-  { id: "hatshepsut", name: "حتشبسوت", nameEn: "Hatshepsut" },
-  { id: "ramses", name: "رمسيس الثاني", nameEn: "Ramses II" },
-  { id: "harun_rashid", name: "هارون الرشيد", nameEn: "Harun al-Rashid" },
-  { id: "ibn_sina", name: "ابن سينا", nameEn: "Ibn Sina" },
-  { id: "ibn_khaldun", name: "ابن خلدون", nameEn: "Ibn Khaldun" },
+const CATEGORIES = [
+  { main: "تاريخ", subs: ["شخصية تاريخية", "شخص من الصحابة", "لو شخص من الماضي موجود حالياً", "حدث تاريخي", "دولة تاريخية قديمة"] },
+  { main: "رياضة", subs: ["لاعب", "مدرب", "فريق", "حدث مؤثر في كرة القدم"] },
+  { main: "قصص", subs: ["قصة للأطفال", "قصة رعب", "قصة حماسية قصيرة"] },
+  { main: "علوم", subs: ["معلومات عن جبال", "معلومات عن بحار", "تجارب علمية", "علماء"] },
+  { main: "POV", subs: ["أنت في الماضي", "أنت في المستقبل", "أنت في لعبة فيديو"] },
 ];
 
 const VOICE_TYPES = ["male_arabic", "female_arabic"];
@@ -53,7 +48,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if auto-send is enabled
     const { data: settings, error: settingsError } = await supabase
       .from("telegram_settings")
       .select("*")
@@ -80,13 +74,27 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
-    const randomChar = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    // Pick random category and subcategory
+    const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    const randomSub = randomCat.subs[Math.floor(Math.random() * randomCat.subs.length)];
     const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
     const randomScenes = Math.floor(Math.random() * 8) + 3;
     const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 
-    let description = randomChar.name;
-    
+    // Get used titles
+    const { data: prevMessages } = await supabase
+      .from("messages")
+      .select("character_name")
+      .order("sent_at", { ascending: false })
+      .limit(500);
+    const usedTitles = (prevMessages || []).map((m: any) => m.character_name);
+    const usedTitlesText = usedTitles.length > 0
+      ? `\n\nالعناوين المستخدمة سابقاً (لا تكررها أبداً):\n${usedTitles.join("\n")}`
+      : "";
+
+    let title = `${randomCat.main} - ${randomSub}`;
+    let description = title;
+
     if (LOVABLE_API_KEY) {
       try {
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -100,13 +108,18 @@ serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: `أنت كاتب إبداعي متخصص في كتابة أوصاف قصيرة وجذابة للشخصيات التاريخية. 
-اكتب وصفاً موجزاً (جملة أو جملتين فقط) بأسلوب شيق ومختلف في كل مرة.
-اجعل الوصف يبدو طبيعياً وكأنه مكتوب من شخص عادي، وليس من روبوت.`,
+                content: `أنت كاتب محتوى إبداعي. مهمتك:
+1. اختر عنواناً محدداً وفريداً بناءً على النوع والموضوع الفرعي المحدد. العنوان يجب أن يكون اسم شيء محدد (مثل اسم شخصية، اسم حدث، اسم مكان، إلخ) وليس عنواناً عاماً.
+2. اكتب وصفاً موجزاً (جملة أو جملتين) يركز على شيء واحد أو موقف واحد محدد بناءً على العنوان.
+3. اجعل الأسلوب طبيعياً وشيقاً.
+
+أجب بالتنسيق التالي فقط بدون أي شيء إضافي:
+عنوان: [العنوان]
+وصف: [الوصف]${usedTitlesText}`,
               },
               {
                 role: "user",
-                content: `اكتب وصفاً قصيراً وإبداعياً للشخصية التاريخية: ${randomChar.name}`,
+                content: `النوع الرئيسي: ${randomCat.main}\nالموضوع الفرعي: ${randomSub}\n\nاختر عنواناً محدداً وفريداً واكتب وصفاً مركزاً عليه.`,
               },
             ],
           }),
@@ -114,7 +127,13 @@ serve(async (req) => {
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          description = aiData.choices?.[0]?.message?.content || randomChar.name;
+          const content = aiData.choices?.[0]?.message?.content || "";
+          
+          const titleMatch = content.match(/عنوان:\s*(.+)/);
+          const descMatch = content.match(/وصف:\s*(.+)/);
+          
+          if (titleMatch) title = titleMatch[1].trim();
+          if (descMatch) description = descMatch[1].trim();
         }
       } catch (aiError) {
         console.error("AI generation error:", aiError);
@@ -122,17 +141,17 @@ serve(async (req) => {
     }
 
     const message = `/create
-عنوان: ${randomChar.name}
+عنوان: ${title}
 وصف: ${description}
 نوع_الصوت: ${randomVoice}
 عدد_المشاهد: ${randomScenes}
 الطول: ${randomDuration}`;
 
     console.log("Sending daily auto-message via User API...");
-    await sendViaMTKruto(settings as { api_id: string; api_hash: string; session_string: string; chat_id: string }, message);
+    await sendViaMTKruto(settings as any, message);
 
     await supabase.from("messages").insert({
-      character_name: randomChar.name,
+      character_name: title,
       voice_type: randomVoice,
       scenes_count: randomScenes,
       duration: randomDuration,
@@ -140,14 +159,10 @@ serve(async (req) => {
       status: "auto_sent",
     });
 
-    console.log("Daily auto-message sent successfully:", randomChar.name);
+    console.log("Daily auto-message sent successfully:", title);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "تم الإرسال التلقائي بنجاح",
-        character: randomChar.name 
-      }),
+      JSON.stringify({ success: true, message: "تم الإرسال التلقائي بنجاح", character: title }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
