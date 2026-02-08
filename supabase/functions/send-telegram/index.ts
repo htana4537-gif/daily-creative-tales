@@ -7,17 +7,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CHARACTERS: Record<string, { name: string; nameEn: string }> = {
-  cleopatra: { name: "كليوباترا", nameEn: "Cleopatra" },
-  pharaoh: { name: "فرعون", nameEn: "Pharaoh" },
-  nefertiti: { name: "نفرتيتي", nameEn: "Nefertiti" },
-  saladin: { name: "صلاح الدين", nameEn: "Saladin" },
-  tutankhamun: { name: "توت عنخ آمون", nameEn: "Tutankhamun" },
-  hatshepsut: { name: "حتشبسوت", nameEn: "Hatshepsut" },
-  ramses: { name: "رمسيس الثاني", nameEn: "Ramses II" },
-  harun_rashid: { name: "هارون الرشيد", nameEn: "Harun al-Rashid" },
-  ibn_sina: { name: "ابن سينا", nameEn: "Ibn Sina" },
-  ibn_khaldun: { name: "ابن خلدون", nameEn: "Ibn Khaldun" },
+const CATEGORY_LABELS: Record<string, string> = {
+  history: "تاريخ",
+  sports: "رياضة",
+  stories: "قصص",
+  science: "علوم",
+  pov: "POV",
+};
+
+const SUBCATEGORY_LABELS: Record<string, string> = {
+  historical_figure: "شخصية تاريخية",
+  companion: "شخص من الصحابة",
+  past_in_present: "لو شخص من الماضي موجود حالياً",
+  historical_event: "حدث تاريخي",
+  ancient_nation: "دولة تاريخية قديمة",
+  player: "لاعب",
+  coach: "مدرب",
+  team: "فريق",
+  football_event: "حدث مؤثر في كرة القدم",
+  children_story: "قصة للأطفال",
+  horror_story: "قصة رعب",
+  short_action: "قصة حماسية قصيرة",
+  mountains: "معلومات عن جبال",
+  seas: "معلومات عن بحار",
+  experiments: "تجارب علمية",
+  scientists: "علماء",
+  pov_past: "أنت في الماضي",
+  pov_future: "أنت في المستقبل",
+  pov_videogame: "أنت في لعبة فيديو",
 };
 
 async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
@@ -38,6 +55,15 @@ async function sendViaMTKruto(settings: { api_id: string; api_hash: string; sess
   }
 }
 
+async function getUsedTitles(supabase: any): Promise<string[]> {
+  const { data } = await supabase
+    .from("messages")
+    .select("character_name")
+    .order("sent_at", { ascending: false })
+    .limit(500);
+  return (data || []).map((m: any) => m.character_name);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -50,9 +76,9 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { character, voiceType, scenesCount, duration } = await req.json();
+    const { mainCategory, subCategory, voiceType, scenesCount, duration } = await req.json();
 
-    // Get Telegram settings using service role
+    // Get Telegram settings
     const { data: settings, error: settingsError } = await supabase
       .from("telegram_settings")
       .select("*")
@@ -67,11 +93,18 @@ serve(async (req) => {
       throw new Error("يرجى إدخال API ID و API Hash و Session String في الإعدادات");
     }
 
-    const charData = CHARACTERS[character] || { name: character, nameEn: character };
+    const categoryName = CATEGORY_LABELS[mainCategory] || mainCategory;
+    const subCategoryName = SUBCATEGORY_LABELS[subCategory] || subCategory;
 
-    // Generate description using AI
-    let description = charData.name;
-    
+    // Get previously used titles to avoid repeats
+    const usedTitles = await getUsedTitles(supabase);
+    const usedTitlesText = usedTitles.length > 0
+      ? `\n\nالعناوين المستخدمة سابقاً (لا تكررها أبداً):\n${usedTitles.join("\n")}`
+      : "";
+
+    let title = `${categoryName} - ${subCategoryName}`;
+    let description = title;
+
     if (LOVABLE_API_KEY) {
       try {
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -85,11 +118,18 @@ serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: "أنت كاتب إبداعي متخصص في كتابة أوصاف قصيرة وجذابة للشخصيات التاريخية. اكتب وصفاً موجزاً (جملة أو جملتين فقط) بأسلوب شيق ومختلف في كل مرة.",
+                content: `أنت كاتب محتوى إبداعي. مهمتك:
+1. اختر عنواناً محدداً وفريداً بناءً على النوع والموضوع الفرعي المحدد. العنوان يجب أن يكون اسم شيء محدد (مثل اسم شخصية، اسم حدث، اسم مكان، إلخ) وليس عنواناً عاماً.
+2. اكتب وصفاً موجزاً (جملة أو جملتين) يركز على شيء واحد أو موقف واحد محدد بناءً على العنوان.
+3. اجعل الأسلوب طبيعياً وشيقاً.
+
+أجب بالتنسيق التالي فقط بدون أي شيء إضافي:
+عنوان: [العنوان]
+وصف: [الوصف]${usedTitlesText}`,
               },
               {
                 role: "user",
-                content: `اكتب وصفاً قصيراً وإبداعياً للشخصية التاريخية: ${charData.name}`,
+                content: `النوع الرئيسي: ${categoryName}\nالموضوع الفرعي: ${subCategoryName}\n\nاختر عنواناً محدداً وفريداً واكتب وصفاً مركزاً عليه.`,
               },
             ],
           }),
@@ -97,7 +137,13 @@ serve(async (req) => {
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          description = aiData.choices?.[0]?.message?.content || charData.name;
+          const content = aiData.choices?.[0]?.message?.content || "";
+          
+          const titleMatch = content.match(/عنوان:\s*(.+)/);
+          const descMatch = content.match(/وصف:\s*(.+)/);
+          
+          if (titleMatch) title = titleMatch[1].trim();
+          if (descMatch) description = descMatch[1].trim();
         }
       } catch (aiError) {
         console.error("AI generation error:", aiError);
@@ -105,18 +151,18 @@ serve(async (req) => {
     }
 
     const message = `/create
-عنوان: ${charData.name}
+عنوان: ${title}
 وصف: ${description}
 نوع_الصوت: ${voiceType}
 عدد_المشاهد: ${scenesCount}
 الطول: ${duration}`;
 
     console.log("Sending message via User API (MTKruto)...");
-    await sendViaMTKruto(settings as { api_id: string; api_hash: string; session_string: string; chat_id: string }, message);
+    await sendViaMTKruto(settings as any, message);
 
-    // Save to history using service role
+    // Save to history
     await supabase.from("messages").insert({
-      character_name: charData.name,
+      character_name: title,
       voice_type: voiceType,
       scenes_count: scenesCount,
       duration: duration,
@@ -124,10 +170,10 @@ serve(async (req) => {
       status: "sent",
     });
 
-    console.log("Message sent successfully via User API");
+    console.log("Message sent successfully:", title);
 
     return new Response(
-      JSON.stringify({ success: true, message: "تم الإرسال بنجاح" }),
+      JSON.stringify({ success: true, message: "تم الإرسال بنجاح", title }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

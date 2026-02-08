@@ -26,7 +26,7 @@ const Index = () => {
             </h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            إنشاء وإرسال محتوى إبداعي عن الشخصيات التاريخية إلى تلجرام
+            إنشاء وإرسال محتوى إبداعي متنوع إلى تلجرام
           </p>
         </header>
 
