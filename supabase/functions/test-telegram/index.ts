@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Client } from "jsr:@mtkruto/mtkruto";
 
 const corsHeaders = {
@@ -12,26 +13,39 @@ serve(async (req) => {
   }
 
   try {
-    const { apiId, apiHash, sessionString, chatId } = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (!apiId || !apiHash || !sessionString || !chatId) {
-      throw new Error("يرجى إدخال جميع البيانات المطلوبة");
+    // Fetch credentials server-side
+    const { data: settings, error: settingsError } = await supabase
+      .from("telegram_settings")
+      .select("api_id, api_hash, session_string, chat_id")
+      .limit(1)
+      .single();
+
+    if (settingsError || !settings) {
+      throw new Error("لم يتم العثور على الإعدادات. يرجى حفظ الإعدادات أولاً");
+    }
+
+    if (!settings.api_id || !settings.api_hash || !settings.session_string || !settings.chat_id) {
+      throw new Error("يرجى إدخال جميع البيانات المطلوبة وحفظها أولاً");
     }
 
     const client = new Client({
       storage: null,
-      apiId: Number(apiId),
-      apiHash: apiHash,
+      apiId: Number(settings.api_id),
+      apiHash: settings.api_hash,
     });
 
-    await client.importAuthString(sessionString);
+    await client.importAuthString(settings.session_string);
     await client.start();
 
     const testMessage = "✅ رسالة اختبار من مُنشئ المحتوى اليومي\n\nتم إعداد الاتصال بنجاح!";
 
     try {
-    const parsedChatId = /^-?\d+$/.test(chatId) ? Number(chatId) : chatId;
-    await client.sendMessage(parsedChatId, testMessage);
+      const parsedChatId = /^-?\d+$/.test(settings.chat_id) ? Number(settings.chat_id) : settings.chat_id;
+      await client.sendMessage(parsedChatId, testMessage);
     } finally {
       await client.disconnect();
     }

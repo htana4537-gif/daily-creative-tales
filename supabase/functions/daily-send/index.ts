@@ -23,7 +23,7 @@ const CHARACTERS = [
 const VOICE_TYPES = ["male_arabic", "female_arabic"];
 const DURATIONS = [15, 30, 60];
 
-async function sendViaMTKruto(settings: any, message: string) {
+async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
   const client = new Client({
     storage: null,
     apiId: Number(settings.api_id),
@@ -48,10 +48,10 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if auto-send is enabled
     const { data: settings, error: settingsError } = await supabase
@@ -80,13 +80,11 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
-    // Pick random values
     const randomChar = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
     const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
     const randomScenes = Math.floor(Math.random() * 8) + 3;
     const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 
-    // Generate creative description using AI
     let description = randomChar.name;
     
     if (LOVABLE_API_KEY) {
@@ -130,11 +128,9 @@ serve(async (req) => {
 عدد_المشاهد: ${randomScenes}
 الطول: ${randomDuration}`;
 
-    // Send via MTKruto (User API)
     console.log("Sending daily auto-message via User API...");
-    await sendViaMTKruto(settings, message);
+    await sendViaMTKruto(settings as { api_id: string; api_hash: string; session_string: string; chat_id: string }, message);
 
-    // Save to history
     await supabase.from("messages").insert({
       character_name: randomChar.name,
       voice_type: randomVoice,

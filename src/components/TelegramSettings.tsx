@@ -19,6 +19,7 @@ export function TelegramSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | null>(null);
+  const [hasCredentials, setHasCredentials] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -26,58 +27,53 @@ export function TelegramSettings() {
   }, []);
 
   const loadSettings = async () => {
-    const { data } = await supabase
-      .from('telegram_settings')
-      .select('*')
-      .limit(1)
-      .single();
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-settings', {
+        body: { action: 'load' },
+      });
 
-    if (data) {
-      setApiId((data as any).api_id || '');
-      setApiHash((data as any).api_hash || '');
-      setSessionString((data as any).session_string || '');
-      setChatId(data.chat_id);
-      setAutoSendEnabled(data.auto_send_enabled);
-      setAutoSendTime(data.auto_send_time?.slice(0, 5) || '09:00');
-      if ((data as any).session_string) {
-        setConnectionStatus('connected');
+      if (error) throw error;
+
+      if (data?.settings) {
+        const s = data.settings;
+        setChatId(s.chat_id || '');
+        setAutoSendEnabled(s.auto_send_enabled);
+        setAutoSendTime(s.auto_send_time?.slice(0, 5) || '09:00');
+        setHasCredentials(s.has_api_id && s.has_api_hash && s.has_session_string);
+        if (s.has_session_string) {
+          setConnectionStatus('connected');
+        }
       }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
     }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { data: existing } = await supabase
-        .from('telegram_settings')
-        .select('id')
-        .limit(1)
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-settings', {
+        body: {
+          action: 'save',
+          settings: {
+            api_id: apiId,
+            api_hash: apiHash,
+            session_string: sessionString,
+            chat_id: chatId,
+            auto_send_enabled: autoSendEnabled,
+            auto_send_time: autoSendTime + ':00',
+          },
+        },
+      });
 
-      const settings: any = {
-        api_id: apiId,
-        api_hash: apiHash,
-        session_string: sessionString,
-        chat_id: chatId,
-        bot_token: '',
-        auto_send_enabled: autoSendEnabled,
-        auto_send_time: autoSendTime + ':00',
-      };
-
-      if (existing) {
-        await supabase
-          .from('telegram_settings')
-          .update(settings)
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('telegram_settings').insert(settings);
-      }
+      if (error) throw error;
 
       toast({
         title: 'تم الحفظ ✓',
         description: 'تم حفظ إعدادات تلجرام بنجاح',
       });
       setConnectionStatus('connected');
+      setHasCredentials(true);
     } catch (error: any) {
       toast({
         title: 'خطأ',
@@ -92,11 +88,10 @@ export function TelegramSettings() {
   const handleTest = async () => {
     setIsTesting(true);
     try {
-      const { error } = await supabase.functions.invoke('test-telegram', {
-        body: { apiId, apiHash, sessionString, chatId },
-      });
+      const { data, error } = await supabase.functions.invoke('test-telegram');
 
       if (error) throw error;
+      if (data && !data.success) throw new Error(data.error || 'فشل الاختبار');
 
       toast({
         title: 'نجح الاختبار! ✓',
@@ -145,13 +140,19 @@ export function TelegramSettings() {
           </ol>
         </div>
 
+        {hasCredentials && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+            ✅ تم حفظ بيانات الاتصال. أدخل قيماً جديدة فقط إذا أردت تحديثها.
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="apiId">API ID</Label>
           <Input
             id="apiId"
             value={apiId}
             onChange={(e) => setApiId(e.target.value)}
-            placeholder="مثال: 12345678"
+            placeholder={hasCredentials ? '••••••• (محفوظ)' : 'مثال: 12345678'}
             dir="ltr"
           />
         </div>
@@ -163,7 +164,7 @@ export function TelegramSettings() {
             type="password"
             value={apiHash}
             onChange={(e) => setApiHash(e.target.value)}
-            placeholder="أدخل API Hash"
+            placeholder={hasCredentials ? '••••••• (محفوظ)' : 'أدخل API Hash'}
             dir="ltr"
           />
         </div>
@@ -174,7 +175,7 @@ export function TelegramSettings() {
             id="sessionString"
             value={sessionString}
             onChange={(e) => setSessionString(e.target.value)}
-            placeholder="الصق Session String هنا"
+            placeholder={hasCredentials ? '••••••• (محفوظ)' : 'الصق Session String هنا'}
             dir="ltr"
             rows={3}
             className="font-mono text-xs"
@@ -229,7 +230,7 @@ export function TelegramSettings() {
           <Button
             variant="outline"
             onClick={handleTest}
-            disabled={isTesting || !apiId || !apiHash || !sessionString || !chatId}
+            disabled={isTesting || (!hasCredentials && (!apiId || !apiHash || !sessionString || !chatId))}
           >
             {isTesting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
