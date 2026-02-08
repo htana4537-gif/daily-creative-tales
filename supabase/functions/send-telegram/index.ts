@@ -20,7 +20,7 @@ const CHARACTERS: Record<string, { name: string; nameEn: string }> = {
   ibn_khaldun: { name: "ابن خلدون", nameEn: "Ibn Khaldun" },
 };
 
-async function sendViaMTKruto(settings: any, message: string) {
+async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
   const client = new Client({
     storage: null,
     apiId: Number(settings.api_id),
@@ -45,14 +45,14 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { character, voiceType, scenesCount, duration } = await req.json();
 
-    // Get Telegram settings
+    // Get Telegram settings using service role
     const { data: settings, error: settingsError } = await supabase
       .from("telegram_settings")
       .select("*")
@@ -104,7 +104,6 @@ serve(async (req) => {
       }
     }
 
-    // Build the message
     const message = `/create
 عنوان: ${charData.name}
 وصف: ${description}
@@ -112,11 +111,10 @@ serve(async (req) => {
 عدد_المشاهد: ${scenesCount}
 الطول: ${duration}`;
 
-    // Send via MTKruto (User API)
     console.log("Sending message via User API (MTKruto)...");
-    await sendViaMTKruto(settings, message);
+    await sendViaMTKruto(settings as { api_id: string; api_hash: string; session_string: string; chat_id: string }, message);
 
-    // Save to history
+    // Save to history using service role
     await supabase.from("messages").insert({
       character_name: charData.name,
       voice_type: voiceType,

@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.daily-send]
 verify_jwt = false
+
+[functions.manage-settings]
+verify_jwt = false
+
+[functions.get-messages]
+verify_jwt = false

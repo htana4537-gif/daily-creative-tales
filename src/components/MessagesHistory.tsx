@@ -28,33 +28,16 @@ export function MessagesHistory({ refreshTrigger }: MessagesHistoryProps) {
     loadMessages();
   }, [refreshTrigger]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('messages-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          setMessages((prev) => [payload.new as Message, ...prev]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   const loadMessages = async () => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .order('sent_at', { ascending: false })
-      .limit(20);
-
-    if (data) {
-      setMessages(data);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-messages');
+      if (error) throw error;
+      if (data?.messages) {
+        setMessages(data.messages);
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
     }
     setIsLoading(false);
   };
