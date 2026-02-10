@@ -82,7 +82,7 @@ export function ContentGenerator({ onMessageSent }: ContentGeneratorProps) {
         {/* Main Category */}
         <div className="space-y-2">
           <Label>نوع الفيديو</Label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
             {CONTENT_CATEGORIES.map((cat) => (
               <Button
                 key={cat.id}
