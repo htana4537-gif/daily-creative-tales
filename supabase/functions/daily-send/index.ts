@@ -98,10 +98,12 @@ serve(async (req) => {
       .from("messages")
       .select("character_name")
       .order("sent_at", { ascending: false })
-      .limit(500);
-    const usedTitles = (prevMessages || []).map((m: any) => m.character_name);
+      .limit(50);
+    const usedTitles = (prevMessages || []).map((m: any) => 
+      String(m.character_name || "").replace(/[\n\r]/g, ' ').substring(0, 200).trim()
+    );
     const usedTitlesText = usedTitles.length > 0
-      ? `\n\nالعناوين المستخدمة سابقاً (لا تكررها أبداً):\n${usedTitles.join("\n")}`
+      ? `\n\nقائمة العناوين المستخدمة سابقاً:\n${usedTitles.map(t => `- ${t}`).join("\n")}`
       : "";
 
     let title = `${randomCat.main} - ${randomSub}`;
@@ -144,8 +146,8 @@ serve(async (req) => {
           const titleMatch = content.match(/عنوان:\s*(.+)/);
           const descMatch = content.match(/وصف:\s*(.+)/);
           
-          if (titleMatch) title = titleMatch[1].trim();
-          if (descMatch) description = descMatch[1].trim();
+          if (titleMatch) title = titleMatch[1].replace(/[\n\r]/g, ' ').substring(0, 200).trim();
+          if (descMatch) description = descMatch[1].replace(/[\n\r]/g, ' ').substring(0, 500).trim();
         }
       } catch (aiError) {
         console.error("AI generation error:", aiError instanceof Error ? aiError.message : "Unknown error");

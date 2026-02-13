@@ -17,27 +17,17 @@ export function DashboardStats({ refreshTrigger }: DashboardStatsProps) {
   }, [refreshTrigger]);
 
   const loadStats = async () => {
-    // Total messages
-    const { count: total } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true });
-    setTotalMessages(total || 0);
-
-    // Today's messages
-    const today = new Date().toISOString().split('T')[0];
-    const { count: todayCount } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .gte('sent_at', today);
-    setTodayMessages(todayCount || 0);
-
-    // Check connection
-    const { data: settings } = await supabase
-      .from('telegram_settings')
-      .select('bot_token')
-      .limit(1)
-      .single();
-    setIsConnected(!!settings?.bot_token);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-stats');
+      if (error) throw error;
+      if (data) {
+        setTotalMessages(data.total || 0);
+        setTodayMessages(data.today || 0);
+        setIsConnected(data.isConnected || false);
+      }
+    } catch (error) {
+      console.error('Failed to load stats');
+    }
   };
 
   return (
