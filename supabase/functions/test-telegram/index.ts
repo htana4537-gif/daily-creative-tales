@@ -67,9 +67,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Test error:", error instanceof Error ? error.message : "Unknown error");
-    const errorMessage = error instanceof Error ? error.message : "خطأ في الاختبار";
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "حدث خطأ أثناء اختبار الاتصال" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

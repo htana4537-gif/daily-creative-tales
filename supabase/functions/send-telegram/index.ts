@@ -77,13 +77,17 @@ async function sendViaMTKruto(settings: { api_id: string; api_hash: string; sess
   }
 }
 
+function sanitizeTitle(title: string): string {
+  return title.replace(/[\n\r]/g, ' ').substring(0, 200).trim();
+}
+
 async function getUsedTitles(supabase: any): Promise<string[]> {
   const { data } = await supabase
     .from("messages")
     .select("character_name")
     .order("sent_at", { ascending: false })
-    .limit(500);
-  return (data || []).map((m: any) => m.character_name);
+    .limit(50);
+  return (data || []).map((m: any) => sanitizeTitle(m.character_name));
 }
 
 serve(async (req) => {
@@ -157,7 +161,7 @@ serve(async (req) => {
 
     const usedTitles = await getUsedTitles(supabase);
     const usedTitlesText = usedTitles.length > 0
-      ? `\n\nالعناوين المستخدمة سابقاً (لا تكررها أبداً):\n${usedTitles.join("\n")}`
+      ? `\n\nقائمة العناوين المستخدمة سابقاً:\n${usedTitles.map(t => `- ${t}`).join("\n")}`
       : "";
 
     let title = `${categoryName} - ${subCategoryName}`;
@@ -200,8 +204,8 @@ serve(async (req) => {
           const titleMatch = content.match(/عنوان:\s*(.+)/);
           const descMatch = content.match(/وصف:\s*(.+)/);
           
-          if (titleMatch) title = titleMatch[1].trim();
-          if (descMatch) description = descMatch[1].trim();
+          if (titleMatch) title = sanitizeTitle(titleMatch[1]);
+          if (descMatch) description = descMatch[1].replace(/[\n\r]/g, ' ').substring(0, 500).trim();
         }
       } catch (aiError) {
         console.error("AI generation error:", aiError instanceof Error ? aiError.message : "Unknown error");
@@ -235,9 +239,8 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Error:", error instanceof Error ? error.message : "Unknown error");
-    const errorMessage = error instanceof Error ? error.message : "خطأ غير متوقع";
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "حدث خطأ أثناء معالجة الطلب" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
