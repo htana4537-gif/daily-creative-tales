@@ -3,7 +3,9 @@ import { ContentGenerator } from '@/components/ContentGenerator';
 import { TelegramSettings } from '@/components/TelegramSettings';
 import { MessagesHistory } from '@/components/MessagesHistory';
 import { DashboardStats } from '@/components/DashboardStats';
-import { Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Send, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -12,11 +14,24 @@ const Index = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30" dir="rtl">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <header className="mb-8 text-center">
+        <header className="mb-8 text-center relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="absolute left-0 top-0"
+          >
+            <LogOut className="h-4 w-4 ml-1" />
+            خروج
+          </Button>
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="rounded-xl bg-primary p-3">
               <Send className="h-8 w-8 text-primary-foreground" />

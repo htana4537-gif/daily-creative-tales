@@ -14,6 +14,13 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+function unauthorized(corsHeaders: Record<string, string>) {
+  return new Response(JSON.stringify({ success: false, error: "غير مصرح" }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
@@ -23,7 +30,20 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Auth check
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return unauthorized(corsHeaders);
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) return unauthorized(corsHeaders);
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { count: total } = await supabase
