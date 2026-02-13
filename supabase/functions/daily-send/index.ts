@@ -2,10 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Client } from "jsr:@mtkruto/mtkruto";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = [
+  "https://daily-creative-tales.lovable.app",
+  "https://id-preview--6ff9ac45-8c6a-457b-b995-7e41546544d0.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 const CATEGORIES = [
   { main: "تاريخ", subs: ["شخصية تاريخية", "شخص من الصحابة", "لو شخص من الماضي موجود حالياً", "حدث تاريخي", "دولة تاريخية قديمة", "معركة تاريخية", "اختراع غيّر العالم", "حضارة مفقودة"] },
@@ -41,6 +49,8 @@ async function sendViaMTKruto(settings: { api_id: string; api_hash: string; sess
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -78,14 +88,12 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
-    // Pick random category and subcategory
     const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
     const randomSub = randomCat.subs[Math.floor(Math.random() * randomCat.subs.length)];
     const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
     const randomScenes = Math.floor(Math.random() * 8) + 3;
     const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 
-    // Get used titles
     const { data: prevMessages } = await supabase
       .from("messages")
       .select("character_name")
@@ -140,7 +148,7 @@ serve(async (req) => {
           if (descMatch) description = descMatch[1].trim();
         }
       } catch (aiError) {
-        console.error("AI generation error:", aiError);
+        console.error("AI generation error:", aiError instanceof Error ? aiError.message : "Unknown error");
       }
     }
 
@@ -170,10 +178,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Daily send error:", error);
-    const errorMessage = error instanceof Error ? error.message : "خطأ غير متوقع";
+    console.error("Daily send error:", error instanceof Error ? error.message : "Unknown error");
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "حدث خطأ أثناء الإرسال التلقائي" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

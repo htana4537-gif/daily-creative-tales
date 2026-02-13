@@ -2,105 +2,61 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Client } from "jsr:@mtkruto/mtkruto";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const allowedOrigins = [
+  "https://daily-creative-tales.lovable.app",
+  "https://id-preview--6ff9ac45-8c6a-457b-b995-7e41546544d0.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+}
+
+const VALID_CATEGORIES = ["history", "sports", "stories", "science", "pov", "oddities", "technology", "geography", "psychology"];
+const VALID_VOICE_TYPES = ["male_arabic", "female_arabic"];
+const VALID_DURATIONS = [15, 30, 60];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  history: "تاريخ",
-  sports: "رياضة",
-  stories: "قصص",
-  science: "علوم",
-  pov: "POV",
-  oddities: "غرائب وعجائب",
-  technology: "تقنية",
-  geography: "جغرافيا وسفر",
-  psychology: "نفسية وتطوير ذات",
+  history: "تاريخ", sports: "رياضة", stories: "قصص", science: "علوم", pov: "POV",
+  oddities: "غرائب وعجائب", technology: "تقنية", geography: "جغرافيا وسفر", psychology: "نفسية وتطوير ذات",
 };
 
 const SUBCATEGORY_LABELS: Record<string, string> = {
-  // تاريخ
-  historical_figure: "شخصية تاريخية",
-  companion: "شخص من الصحابة",
-  past_in_present: "لو شخص من الماضي موجود حالياً",
-  historical_event: "حدث تاريخي",
-  ancient_nation: "دولة تاريخية قديمة",
-  historical_battle: "معركة تاريخية",
-  world_changing_invention: "اختراع غيّر العالم",
-  lost_civilization: "حضارة مفقودة",
-  // رياضة
-  player: "لاعب",
-  coach: "مدرب",
-  team: "فريق",
-  football_event: "حدث مؤثر في كرة القدم",
-  legendary_stadium: "ملعب أسطوري",
-  shocking_transfer: "انتقال صادم",
-  historic_derby: "ديربي تاريخي",
-  world_record: "رقم قياسي",
-  // قصص
-  children_story: "قصة للأطفال",
-  horror_story: "قصة رعب",
-  short_action: "قصة حماسية قصيرة",
-  mystery_story: "قصة غموض",
-  scifi_story: "قصة خيال علمي",
-  survival_story: "قصة بقاء",
-  folk_legend: "أسطورة شعبية",
-  true_horror: "قصة حقيقية مرعبة",
-  // علوم
-  mountains: "معلومات عن جبال",
-  seas: "معلومات عن بحار",
-  experiments: "تجارب علمية",
-  scientists: "علماء",
-  space_planets: "الفضاء والكواكب",
-  strange_animals: "حيوانات غريبة",
-  human_body: "جسم الإنسان",
-  natural_disasters: "كوارث طبيعية",
-  // POV
-  pov_past: "أنت في الماضي",
-  pov_future: "أنت في المستقبل",
-  pov_videogame: "أنت في لعبة فيديو",
-  pov_horror_movie: "أنت في فيلم رعب",
-  pov_deserted_island: "أنت على جزيرة مهجورة",
-  pov_space: "أنت في الفضاء",
-  pov_last_person: "أنت آخر شخص على الأرض",
+  historical_figure: "شخصية تاريخية", companion: "شخص من الصحابة",
+  past_in_present: "لو شخص من الماضي موجود حالياً", historical_event: "حدث تاريخي",
+  ancient_nation: "دولة تاريخية قديمة", historical_battle: "معركة تاريخية",
+  world_changing_invention: "اختراع غيّر العالم", lost_civilization: "حضارة مفقودة",
+  player: "لاعب", coach: "مدرب", team: "فريق", football_event: "حدث مؤثر في كرة القدم",
+  legendary_stadium: "ملعب أسطوري", shocking_transfer: "انتقال صادم",
+  historic_derby: "ديربي تاريخي", world_record: "رقم قياسي",
+  children_story: "قصة للأطفال", horror_story: "قصة رعب", short_action: "قصة حماسية قصيرة",
+  mystery_story: "قصة غموض", scifi_story: "قصة خيال علمي", survival_story: "قصة بقاء",
+  folk_legend: "أسطورة شعبية", true_horror: "قصة حقيقية مرعبة",
+  mountains: "معلومات عن جبال", seas: "معلومات عن بحار", experiments: "تجارب علمية",
+  scientists: "علماء", space_planets: "الفضاء والكواكب", strange_animals: "حيوانات غريبة",
+  human_body: "جسم الإنسان", natural_disasters: "كوارث طبيعية",
+  pov_past: "أنت في الماضي", pov_future: "أنت في المستقبل", pov_videogame: "أنت في لعبة فيديو",
+  pov_horror_movie: "أنت في فيلم رعب", pov_deserted_island: "أنت على جزيرة مهجورة",
+  pov_space: "أنت في الفضاء", pov_last_person: "أنت آخر شخص على الأرض",
   pov_parallel_world: "أنت في عالم موازي",
-  // غرائب وعجائب
-  mysterious_place: "مكان غامض",
-  unexplained_phenomenon: "ظاهرة غير مفسرة",
-  mythical_creature: "مخلوق أسطوري",
-  conspiracy_theory: "نظرية مؤامرة",
-  mysterious_disappearance: "اختفاء غامض",
-  strange_laws: "أغرب القوانين",
-  unbelievable_coincidence: "صدفة لا تُصدّق",
-  abandoned_city: "مدينة مهجورة",
-  // تقنية
-  world_changing_app: "تطبيق غيّر العالم",
-  amazing_robot: "روبوت مذهل",
-  ai_achievement: "ذكاء اصطناعي",
-  failed_invention: "اختراع فاشل",
-  future_tech: "مستقبل التقنية",
-  tech_company_story: "قصة شركة تقنية",
-  legendary_videogame: "ألعاب فيديو أسطورية",
-  famous_hacker: "هاكر شهير",
-  // جغرافيا وسفر
-  beautiful_city: "أجمل مدينة",
-  dangerous_road: "أخطر طريق",
-  strange_island: "جزيرة غريبة",
-  architectural_wonder: "عجائب معمارية",
-  unique_people: "شعب فريد",
-  deepest_cave: "أعمق كهف",
-  strange_borders: "حدود غريبة",
-  smallest_country: "أصغر دولة",
-  // نفسية وتطوير ذات
-  psychological_trick: "خدعة نفسية",
-  famous_experiment: "تجربة نفسية شهيرة",
-  body_language: "لغة الجسد",
-  success_habit: "عادة ناجحين",
-  psychological_effect: "أثر نفسي",
-  common_myth: "خرافة شائعة",
-  inspiring_success: "قصة نجاح ملهمة",
-  art_of_persuasion: "فن الإقناع",
+  mysterious_place: "مكان غامض", unexplained_phenomenon: "ظاهرة غير مفسرة",
+  mythical_creature: "مخلوق أسطوري", conspiracy_theory: "نظرية مؤامرة",
+  mysterious_disappearance: "اختفاء غامض", strange_laws: "أغرب القوانين",
+  unbelievable_coincidence: "صدفة لا تُصدّق", abandoned_city: "مدينة مهجورة",
+  world_changing_app: "تطبيق غيّر العالم", amazing_robot: "روبوت مذهل",
+  ai_achievement: "ذكاء اصطناعي", failed_invention: "اختراع فاشل",
+  future_tech: "مستقبل التقنية", tech_company_story: "قصة شركة تقنية",
+  legendary_videogame: "ألعاب فيديو أسطورية", famous_hacker: "هاكر شهير",
+  beautiful_city: "أجمل مدينة", dangerous_road: "أخطر طريق", strange_island: "جزيرة غريبة",
+  architectural_wonder: "عجائب معمارية", unique_people: "شعب فريد",
+  deepest_cave: "أعمق كهف", strange_borders: "حدود غريبة", smallest_country: "أصغر دولة",
+  psychological_trick: "خدعة نفسية", famous_experiment: "تجربة نفسية شهيرة",
+  body_language: "لغة الجسد", success_habit: "عادة ناجحين",
+  psychological_effect: "أثر نفسي", common_myth: "خرافة شائعة",
+  inspiring_success: "قصة نجاح ملهمة", art_of_persuasion: "فن الإقناع",
 };
 
 async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
@@ -131,6 +87,8 @@ async function getUsedTitles(supabase: any): Promise<string[]> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -142,7 +100,42 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { mainCategory, subCategory, voiceType, scenesCount, duration } = await req.json();
+    const body = await req.json();
+    const { mainCategory, subCategory, voiceType, scenesCount, duration } = body;
+
+    // Input validation
+    if (!mainCategory || !VALID_CATEGORIES.includes(mainCategory)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "نوع المحتوى غير صالح" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!subCategory || typeof subCategory !== "string" || subCategory.length > 100 || !SUBCATEGORY_LABELS[subCategory]) {
+      return new Response(
+        JSON.stringify({ success: false, error: "الموضوع الفرعي غير صالح" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!voiceType || !VALID_VOICE_TYPES.includes(voiceType)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "نوع الصوت غير صالح" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const parsedScenes = Number(scenesCount);
+    if (!Number.isInteger(parsedScenes) || parsedScenes < 1 || parsedScenes > 20) {
+      return new Response(
+        JSON.stringify({ success: false, error: "عدد المشاهد غير صالح" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const parsedDuration = Number(duration);
+    if (!VALID_DURATIONS.includes(parsedDuration)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "مدة الفيديو غير صالحة" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get Telegram settings
     const { data: settings, error: settingsError } = await supabase
@@ -162,7 +155,6 @@ serve(async (req) => {
     const categoryName = CATEGORY_LABELS[mainCategory] || mainCategory;
     const subCategoryName = SUBCATEGORY_LABELS[subCategory] || subCategory;
 
-    // Get previously used titles to avoid repeats
     const usedTitles = await getUsedTitles(supabase);
     const usedTitlesText = usedTitles.length > 0
       ? `\n\nالعناوين المستخدمة سابقاً (لا تكررها أبداً):\n${usedTitles.join("\n")}`
@@ -212,7 +204,7 @@ serve(async (req) => {
           if (descMatch) description = descMatch[1].trim();
         }
       } catch (aiError) {
-        console.error("AI generation error:", aiError);
+        console.error("AI generation error:", aiError instanceof Error ? aiError.message : "Unknown error");
       }
     }
 
@@ -220,18 +212,17 @@ serve(async (req) => {
 عنوان: ${title}
 وصف: ${description}
 نوع_الصوت: ${voiceType}
-عدد_المشاهد: ${scenesCount}
-الطول: ${duration}`;
+عدد_المشاهد: ${parsedScenes}
+الطول: ${parsedDuration}`;
 
     console.log("Sending message via User API (MTKruto)...");
     await sendViaMTKruto(settings as any, message);
 
-    // Save to history
     await supabase.from("messages").insert({
       character_name: title,
       voice_type: voiceType,
-      scenes_count: scenesCount,
-      duration: duration,
+      scenes_count: parsedScenes,
+      duration: parsedDuration,
       full_message: message,
       status: "sent",
     });
@@ -243,7 +234,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
+    console.error("Error:", error instanceof Error ? error.message : "Unknown error");
     const errorMessage = error instanceof Error ? error.message : "خطأ غير متوقع";
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
