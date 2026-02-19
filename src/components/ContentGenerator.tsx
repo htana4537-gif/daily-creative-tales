@@ -137,9 +137,9 @@ export function ContentGenerator({ onMessageSent }: ContentGeneratorProps) {
           <Slider
             value={scenesCount}
             onValueChange={setScenesCount}
-            min={1}
-            max={10}
-            step={1}
+          min={1}
+          max={25}
+          step={1}
           />
         </div>
 
