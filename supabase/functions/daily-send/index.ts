@@ -100,7 +100,7 @@ serve(async (req) => {
     const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
     const randomSub = randomCat.subs[Math.floor(Math.random() * randomCat.subs.length)];
     const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
-    const randomScenes = Math.floor(Math.random() * 8) + 3;
+    const randomScenes = Math.floor(Math.random() * 20) + 5;
     const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 
     const { data: prevMessages } = await supabase
