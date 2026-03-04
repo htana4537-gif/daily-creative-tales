@@ -86,7 +86,7 @@ serve(async (req) => {
     if (action === "load") {
       const { data, error } = await supabase
         .from("telegram_settings")
-        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string")
+        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string, preferred_categories, preferred_voice, preferred_scenes_min, preferred_scenes_max, preferred_duration")
         .limit(1)
         .single();
 
@@ -106,6 +106,11 @@ serve(async (req) => {
               has_api_id: !!data.api_id,
               has_api_hash: !!data.api_hash,
               has_session_string: !!data.session_string,
+              preferred_categories: data.preferred_categories || [],
+              preferred_voice: data.preferred_voice || "",
+              preferred_scenes_min: data.preferred_scenes_min ?? 5,
+              preferred_scenes_max: data.preferred_scenes_max ?? 25,
+              preferred_duration: data.preferred_duration || "",
             },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -151,6 +156,13 @@ serve(async (req) => {
       if (inputSettings.api_id) settingsToSave.api_id = inputSettings.api_id;
       if (inputSettings.api_hash) settingsToSave.api_hash = inputSettings.api_hash;
       if (inputSettings.session_string) settingsToSave.session_string = inputSettings.session_string;
+
+      // Auto-send preferences
+      if (inputSettings.preferred_categories !== undefined) settingsToSave.preferred_categories = inputSettings.preferred_categories;
+      if (inputSettings.preferred_voice !== undefined) settingsToSave.preferred_voice = inputSettings.preferred_voice || null;
+      if (inputSettings.preferred_scenes_min !== undefined) settingsToSave.preferred_scenes_min = inputSettings.preferred_scenes_min;
+      if (inputSettings.preferred_scenes_max !== undefined) settingsToSave.preferred_scenes_max = inputSettings.preferred_scenes_max;
+      if (inputSettings.preferred_duration !== undefined) settingsToSave.preferred_duration = inputSettings.preferred_duration || null;
 
       if (existing) {
         const { error } = await supabase

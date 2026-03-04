@@ -5,9 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Settings, TestTube, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { CONTENT_CATEGORIES, VOICE_TYPES, DURATION_OPTIONS } from '@/lib/characters';
 
 export function TelegramSettings() {
   const [apiId, setApiId] = useState('');
@@ -16,6 +19,11 @@ export function TelegramSettings() {
   const [chatId, setChatId] = useState('');
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
   const [autoSendTime, setAutoSendTime] = useState('09:00');
+  const [preferredCategories, setPreferredCategories] = useState<string[]>([]);
+  const [preferredVoice, setPreferredVoice] = useState('');
+  const [preferredScenesMin, setPreferredScenesMin] = useState(5);
+  const [preferredScenesMax, setPreferredScenesMax] = useState(25);
+  const [preferredDuration, setPreferredDuration] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | null>(null);
@@ -40,6 +48,11 @@ export function TelegramSettings() {
         setAutoSendEnabled(s.auto_send_enabled);
         setAutoSendTime(s.auto_send_time?.slice(0, 5) || '09:00');
         setHasCredentials(s.has_api_id && s.has_api_hash && s.has_session_string);
+        setPreferredCategories(s.preferred_categories || []);
+        setPreferredVoice(s.preferred_voice || '');
+        setPreferredScenesMin(s.preferred_scenes_min ?? 5);
+        setPreferredScenesMax(s.preferred_scenes_max ?? 25);
+        setPreferredDuration(s.preferred_duration ? String(s.preferred_duration) : '');
         if (s.has_session_string) {
           setConnectionStatus('connected');
         }
@@ -47,6 +60,12 @@ export function TelegramSettings() {
     } catch (error) {
       console.error('Failed to load settings:', error);
     }
+  };
+
+  const toggleCategory = (catId: string) => {
+    setPreferredCategories(prev =>
+      prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
+    );
   };
 
   const handleSave = async () => {
@@ -62,6 +81,11 @@ export function TelegramSettings() {
             chat_id: chatId,
             auto_send_enabled: autoSendEnabled,
             auto_send_time: autoSendTime + ':00',
+            preferred_categories: preferredCategories,
+            preferred_voice: preferredVoice,
+            preferred_scenes_min: preferredScenesMin,
+            preferred_scenes_max: preferredScenesMax,
+            preferred_duration: preferredDuration ? parseInt(preferredDuration) : null,
           },
         },
       });
@@ -207,15 +231,99 @@ export function TelegramSettings() {
         </div>
 
         {autoSendEnabled && (
-          <div className="space-y-2">
-            <Label htmlFor="autoSendTime">وقت الإرسال اليومي</Label>
-            <Input
-              id="autoSendTime"
-              type="time"
-              value={autoSendTime}
-              onChange={(e) => setAutoSendTime(e.target.value)}
-              dir="ltr"
-            />
+          <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+            <p className="text-sm font-medium text-muted-foreground">⚙️ تفضيلات الإرسال التلقائي</p>
+
+            <div className="space-y-2">
+              <Label htmlFor="autoSendTime">وقت الإرسال اليومي</Label>
+              <Input
+                id="autoSendTime"
+                type="time"
+                value={autoSendTime}
+                onChange={(e) => setAutoSendTime(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>الفئات المفضلة (اترك فارغاً للاختيار العشوائي)</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {CONTENT_CATEGORIES.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    variant={preferredCategories.includes(cat.id) ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex items-center gap-1 h-auto py-2 text-xs"
+                    onClick={() => toggleCategory(cat.id)}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.name}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>نوع الصوت المفضل</Label>
+              <Select value={preferredVoice} onValueChange={setPreferredVoice}>
+                <SelectTrigger>
+                  <SelectValue placeholder="عشوائي" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="random">عشوائي</SelectItem>
+                  {VOICE_TYPES.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.id}>
+                      {voice.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>عدد المشاهد: {preferredScenesMin} - {preferredScenesMax}</Label>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground">الحد الأدنى</span>
+                <Slider
+                  value={[preferredScenesMin]}
+                  onValueChange={([v]) => setPreferredScenesMin(Math.min(v, preferredScenesMax))}
+                  min={1}
+                  max={25}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-sm font-mono w-6 text-center">{preferredScenesMin}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground">الحد الأقصى</span>
+                <Slider
+                  value={[preferredScenesMax]}
+                  onValueChange={([v]) => setPreferredScenesMax(Math.max(v, preferredScenesMin))}
+                  min={1}
+                  max={25}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-sm font-mono w-6 text-center">{preferredScenesMax}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>مدة الفيديو المفضلة</Label>
+              <Select value={preferredDuration} onValueChange={setPreferredDuration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="عشوائي" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="random">عشوائي</SelectItem>
+                  {DURATION_OPTIONS.map((d) => (
+                    <SelectItem key={d} value={d.toString()}>
+                      {d} ثانية
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 

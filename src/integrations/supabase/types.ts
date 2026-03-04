@@ -57,6 +57,11 @@ export type Database = {
           chat_id: string
           created_at: string
           id: string
+          preferred_categories: Json | null
+          preferred_duration: number | null
+          preferred_scenes_max: number | null
+          preferred_scenes_min: number | null
+          preferred_voice: string | null
           session_string: string | null
           updated_at: string
         }
@@ -69,6 +74,11 @@ export type Database = {
           chat_id: string
           created_at?: string
           id?: string
+          preferred_categories?: Json | null
+          preferred_duration?: number | null
+          preferred_scenes_max?: number | null
+          preferred_scenes_min?: number | null
+          preferred_voice?: string | null
           session_string?: string | null
           updated_at?: string
         }
@@ -81,6 +91,11 @@ export type Database = {
           chat_id?: string
           created_at?: string
           id?: string
+          preferred_categories?: Json | null
+          preferred_duration?: number | null
+          preferred_scenes_max?: number | null
+          preferred_scenes_min?: number | null
+          preferred_voice?: string | null
           session_string?: string | null
           updated_at?: string
         }

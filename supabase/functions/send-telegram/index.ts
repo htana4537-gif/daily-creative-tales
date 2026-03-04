@@ -53,10 +53,9 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
 
 async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
   const client = new Client({
-    storage: null,
     apiId: Number(settings.api_id),
     apiHash: settings.api_hash,
-  });
+  } as any);
 
   await client.importAuthString(settings.session_string);
   await client.start();
