@@ -53,10 +53,9 @@ serve(async (req) => {
     }
 
     const client = new Client({
-      storage: null,
       apiId: Number(settings.api_id),
       apiHash: settings.api_hash,
-    });
+    } as any);
 
     await client.importAuthString(settings.session_string);
     await client.start();

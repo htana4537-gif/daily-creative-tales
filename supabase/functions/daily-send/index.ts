@@ -19,15 +19,19 @@ const CATEGORIES = [
   { main: "نفسية وتطوير ذات", subs: ["خدعة نفسية", "تجربة نفسية شهيرة", "لغة الجسد", "عادة ناجحين", "أثر نفسي", "خرافة شائعة", "قصة نجاح ملهمة", "فن الإقناع"] },
 ];
 
+const CATEGORY_ID_TO_NAME: Record<string, string> = {
+  history: "تاريخ", sports: "رياضة", stories: "قصص", science: "علوم", pov: "POV",
+  oddities: "غرائب وعجائب", technology: "تقنية", geography: "جغرافيا وسفر", psychology: "نفسية وتطوير ذات",
+};
+
 const VOICE_TYPES = ["male_arabic", "female_arabic"];
 const DURATIONS = [15, 30, 60];
 
 async function sendViaMTKruto(settings: { api_id: string; api_hash: string; session_string: string; chat_id: string }, message: string) {
   const client = new Client({
-    storage: null,
     apiId: Number(settings.api_id),
     apiHash: settings.api_hash,
-  });
+  } as any);
 
   await client.importAuthString(settings.session_string);
   await client.start();
@@ -48,7 +52,6 @@ function unauthorized(corsHeaders: Record<string, string>) {
 }
 
 serve(async (req) => {
-
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -78,7 +81,6 @@ serve(async (req) => {
       .single();
 
     if (settingsError || !settings) {
-      console.log("No telegram settings found");
       return new Response(
         JSON.stringify({ success: false, message: "لم يتم إعداد الإعدادات" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -86,7 +88,6 @@ serve(async (req) => {
     }
 
     if (!settings.auto_send_enabled) {
-      console.log("Auto-send is disabled");
       return new Response(
         JSON.stringify({ success: false, message: "الإرسال التلقائي معطل" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -97,18 +98,43 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
-    const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    // Use preferred categories or fall back to all
+    const preferredCats: string[] = Array.isArray(settings.preferred_categories) && settings.preferred_categories.length > 0
+      ? settings.preferred_categories
+      : [];
+
+    let filteredCategories = CATEGORIES;
+    if (preferredCats.length > 0) {
+      const preferredNames = preferredCats.map((id: string) => CATEGORY_ID_TO_NAME[id]).filter(Boolean);
+      if (preferredNames.length > 0) {
+        filteredCategories = CATEGORIES.filter(c => preferredNames.includes(c.main));
+      }
+    }
+
+    const randomCat = filteredCategories[Math.floor(Math.random() * filteredCategories.length)];
     const randomSub = randomCat.subs[Math.floor(Math.random() * randomCat.subs.length)];
-    const randomVoice = VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
-    const randomScenes = Math.floor(Math.random() * 20) + 5;
-    const randomDuration = DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
+
+    // Use preferred voice or random
+    const randomVoice = settings.preferred_voice && VOICE_TYPES.includes(settings.preferred_voice)
+      ? settings.preferred_voice
+      : VOICE_TYPES[Math.floor(Math.random() * VOICE_TYPES.length)];
+
+    // Use preferred scenes range or defaults
+    const scenesMin = settings.preferred_scenes_min ?? 5;
+    const scenesMax = settings.preferred_scenes_max ?? 25;
+    const randomScenes = Math.floor(Math.random() * (scenesMax - scenesMin + 1)) + scenesMin;
+
+    // Use preferred duration or random
+    const randomDuration = settings.preferred_duration && DURATIONS.includes(settings.preferred_duration)
+      ? settings.preferred_duration
+      : DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
 
     const { data: prevMessages } = await supabase
       .from("messages")
       .select("character_name")
       .order("sent_at", { ascending: false })
       .limit(50);
-    const usedTitles = (prevMessages || []).map((m: any) => 
+    const usedTitles = (prevMessages || []).map((m: any) =>
       String(m.character_name || "").replace(/[\n\r]/g, ' ').substring(0, 200).trim()
     );
     const usedTitlesText = usedTitles.length > 0
@@ -158,10 +184,10 @@ serve(async (req) => {
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
           const content = aiData.choices?.[0]?.message?.content || "";
-          
+
           const titleMatch = content.match(/عنوان:\s*(.+)/);
           const descMatch = content.match(/وصف:\s*(.+)/);
-          
+
           if (titleMatch) title = titleMatch[1].replace(/[\n\r]/g, ' ').substring(0, 200).trim();
           if (descMatch) description = descMatch[1].replace(/[\n\r]/g, ' ').substring(0, 500).trim();
         }
