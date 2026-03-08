@@ -144,7 +144,7 @@ export function TelegramSettings() {
   const handleTriggerAutoSend = async () => {
     setIsTriggering(true);
     try {
-      const { data, error } = await supabase.functions.invoke('daily-send');
+      const { data, error } = await supabase.functions.invoke('daily-send?force=true');
 
       if (error) throw error;
       if (data && !data.success) throw new Error(data.message || data.error || 'فشل الإرسال');
