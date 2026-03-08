@@ -51,7 +51,11 @@ export type Database = {
         Row: {
           api_hash: string | null
           api_id: string | null
+          auto_send_count: number
           auto_send_enabled: boolean
+          auto_send_frequency: string
+          auto_send_last_date: string | null
+          auto_send_sent_today: number
           auto_send_time: string
           bot_token: string | null
           chat_id: string
@@ -68,7 +72,11 @@ export type Database = {
         Insert: {
           api_hash?: string | null
           api_id?: string | null
+          auto_send_count?: number
           auto_send_enabled?: boolean
+          auto_send_frequency?: string
+          auto_send_last_date?: string | null
+          auto_send_sent_today?: number
           auto_send_time?: string
           bot_token?: string | null
           chat_id: string
@@ -85,7 +93,11 @@ export type Database = {
         Update: {
           api_hash?: string | null
           api_id?: string | null
+          auto_send_count?: number
           auto_send_enabled?: boolean
+          auto_send_frequency?: string
+          auto_send_last_date?: string | null
+          auto_send_sent_today?: number
           auto_send_time?: string
           bot_token?: string | null
           chat_id?: string
