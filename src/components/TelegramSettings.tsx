@@ -26,6 +26,7 @@ export function TelegramSettings() {
   const [preferredDuration, setPreferredDuration] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isTriggering, setIsTriggering] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | null>(null);
   const [hasCredentials, setHasCredentials] = useState(false);
   const { toast } = useToast();
