@@ -86,7 +86,7 @@ serve(async (req) => {
     if (action === "load") {
       const { data, error } = await supabase
         .from("telegram_settings")
-        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string, preferred_categories, preferred_voice, preferred_scenes_min, preferred_scenes_max, preferred_duration")
+        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string, preferred_categories, preferred_voice, preferred_scenes_min, preferred_scenes_max, preferred_duration, auto_send_count, auto_send_frequency")
         .limit(1)
         .single();
 
