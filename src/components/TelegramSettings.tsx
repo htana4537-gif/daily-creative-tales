@@ -56,6 +56,8 @@ export function TelegramSettings() {
         setPreferredScenesMin(s.preferred_scenes_min ?? 5);
         setPreferredScenesMax(s.preferred_scenes_max ?? 25);
         setPreferredDuration(s.preferred_duration ? String(s.preferred_duration) : '');
+        setAutoSendCount(s.auto_send_count ?? 1);
+        setAutoSendFrequency(s.auto_send_frequency || 'daily');
         if (s.has_session_string) {
           setConnectionStatus('connected');
         }
