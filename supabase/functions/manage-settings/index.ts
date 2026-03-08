@@ -165,6 +165,8 @@ serve(async (req) => {
       if (inputSettings.preferred_scenes_min !== undefined) settingsToSave.preferred_scenes_min = inputSettings.preferred_scenes_min;
       if (inputSettings.preferred_scenes_max !== undefined) settingsToSave.preferred_scenes_max = inputSettings.preferred_scenes_max;
       if (inputSettings.preferred_duration !== undefined) settingsToSave.preferred_duration = inputSettings.preferred_duration || null;
+      if (inputSettings.auto_send_count !== undefined) settingsToSave.auto_send_count = inputSettings.auto_send_count;
+      if (inputSettings.auto_send_frequency !== undefined) settingsToSave.auto_send_frequency = inputSettings.auto_send_frequency;
 
       if (existing) {
         const { error } = await supabase
