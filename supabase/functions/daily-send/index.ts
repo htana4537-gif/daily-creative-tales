@@ -57,6 +57,13 @@ async function verifyAuth(req: Request, supabaseUrl: string, supabaseAnonKey: st
     return true;
   }
 
+  // Check if it's the anon key (for pg_cron calls)
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (anonKey && token === anonKey) {
+    console.log("Authenticated via anon key (cron/scheduled)");
+    return true;
+  }
+
   // Otherwise verify as user JWT
   try {
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
