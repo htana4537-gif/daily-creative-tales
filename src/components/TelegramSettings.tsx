@@ -24,6 +24,8 @@ export function TelegramSettings() {
   const [preferredScenesMin, setPreferredScenesMin] = useState(5);
   const [preferredScenesMax, setPreferredScenesMax] = useState(25);
   const [preferredDuration, setPreferredDuration] = useState('');
+  const [autoSendCount, setAutoSendCount] = useState(1);
+  const [autoSendFrequency, setAutoSendFrequency] = useState('daily');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
