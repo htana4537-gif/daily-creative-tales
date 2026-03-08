@@ -265,7 +265,7 @@ export function TelegramSettings() {
             <p className="text-sm font-medium text-muted-foreground">⚙️ تفضيلات الإرسال التلقائي</p>
 
             <div className="space-y-2">
-              <Label htmlFor="autoSendTime">وقت الإرسال اليومي</Label>
+              <Label htmlFor="autoSendTime">وقت بدء الإرسال</Label>
               <Input
                 id="autoSendTime"
                 type="time"
@@ -273,6 +273,36 @@ export function TelegramSettings() {
                 onChange={(e) => setAutoSendTime(e.target.value)}
                 dir="ltr"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>التكرار</Label>
+                <Select value={autoSendFrequency} onValueChange={setAutoSendFrequency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">يومياً</SelectItem>
+                    <SelectItem value="weekly">أسبوعياً</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>عدد الرسائل {autoSendFrequency === 'daily' ? 'في اليوم' : 'في الأسبوع'}</Label>
+                <Select value={String(autoSendCount)} onValueChange={(v) => setAutoSendCount(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} {n === 1 ? 'رسالة' : 'رسائل'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
