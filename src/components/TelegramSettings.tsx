@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Settings, TestTube, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { Settings, TestTube, Loader2, CheckCircle, XCircle, ExternalLink, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_CATEGORIES, VOICE_TYPES, DURATION_OPTIONS } from '@/lib/characters';
@@ -26,6 +26,7 @@ export function TelegramSettings() {
   const [preferredDuration, setPreferredDuration] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isTriggering, setIsTriggering] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | null>(null);
   const [hasCredentials, setHasCredentials] = useState(false);
   const { toast } = useToast();
@@ -131,6 +132,29 @@ export function TelegramSettings() {
       setConnectionStatus('disconnected');
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleTriggerAutoSend = async () => {
+    setIsTriggering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('daily-send');
+
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.message || data.error || 'فشل الإرسال');
+
+      toast({
+        title: 'تم الإرسال التلقائي! ✨',
+        description: `تم إرسال: ${data.character || ''}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'فشل الإرسال التلقائي',
+        description: error.message || 'حدث خطأ',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTriggering(false);
     }
   };
 
@@ -327,7 +351,7 @@ export function TelegramSettings() {
           </div>
         )}
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-2 flex-wrap">
           <Button onClick={handleSave} disabled={isSaving} className="flex-1">
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -346,6 +370,20 @@ export function TelegramSettings() {
               <>
                 <TestTube className="ml-2 h-4 w-4" />
                 اختبار
+              </>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleTriggerAutoSend}
+            disabled={isTriggering || !hasCredentials}
+          >
+            {isTriggering ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Zap className="ml-2 h-4 w-4" />
+                تشغيل الإرسال التلقائي الآن
               </>
             )}
           </Button>
