@@ -44,11 +44,30 @@ async function sendViaMTKruto(settings: { api_id: string; api_hash: string; sess
   }
 }
 
-function unauthorized(corsHeaders: Record<string, string>) {
-  return new Response(JSON.stringify({ success: false, error: "غير مصرح" }), {
-    status: 401,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+async function verifyAuth(req: Request, supabaseUrl: string, supabaseAnonKey: string): Promise<boolean> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return false;
+
+  const token = authHeader.replace("Bearer ", "");
+
+  // Check if it's the service role key (for cron/scheduled calls)
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceRoleKey && token === serviceRoleKey) {
+    console.log("Authenticated via service role key (cron/scheduled)");
+    return true;
+  }
+
+  // Otherwise verify as user JWT
+  try {
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -62,16 +81,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    // Auth check
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return unauthorized(corsHeaders);
-
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) return unauthorized(corsHeaders);
+    // Auth check - accepts both user JWT and service role key
+    const isAuthed = await verifyAuth(req, supabaseUrl, supabaseAnonKey);
+    if (!isAuthed) {
+      return new Response(JSON.stringify({ success: false, error: "غير مصرح" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: settings, error: settingsError } = await supabase
@@ -81,6 +98,7 @@ serve(async (req) => {
       .single();
 
     if (settingsError || !settings) {
+      console.error("Settings not found:", settingsError?.message);
       return new Response(
         JSON.stringify({ success: false, message: "لم يتم إعداد الإعدادات" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -88,6 +106,7 @@ serve(async (req) => {
     }
 
     if (!settings.auto_send_enabled) {
+      console.log("Auto-send is disabled, skipping");
       return new Response(
         JSON.stringify({ success: false, message: "الإرسال التلقائي معطل" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -98,6 +117,14 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
+    // Log all preferences for debugging
+    console.log("=== Auto-send preferences ===");
+    console.log("preferred_categories:", JSON.stringify(settings.preferred_categories));
+    console.log("preferred_voice:", settings.preferred_voice);
+    console.log("preferred_scenes_min:", settings.preferred_scenes_min);
+    console.log("preferred_scenes_max:", settings.preferred_scenes_max);
+    console.log("preferred_duration:", settings.preferred_duration);
+
     // Use preferred categories or fall back to all
     const preferredCats: string[] = Array.isArray(settings.preferred_categories) && settings.preferred_categories.length > 0
       ? settings.preferred_categories
@@ -106,10 +133,13 @@ serve(async (req) => {
     let filteredCategories = CATEGORIES;
     if (preferredCats.length > 0) {
       const preferredNames = preferredCats.map((id: string) => CATEGORY_ID_TO_NAME[id]).filter(Boolean);
+      console.log("Filtered category names:", JSON.stringify(preferredNames));
       if (preferredNames.length > 0) {
         filteredCategories = CATEGORIES.filter(c => preferredNames.includes(c.main));
       }
     }
+
+    console.log("Using categories:", filteredCategories.map(c => c.main).join(", "));
 
     const randomCat = filteredCategories[Math.floor(Math.random() * filteredCategories.length)];
     const randomSub = randomCat.subs[Math.floor(Math.random() * randomCat.subs.length)];
@@ -128,6 +158,8 @@ serve(async (req) => {
     const randomDuration = settings.preferred_duration && DURATIONS.includes(settings.preferred_duration)
       ? settings.preferred_duration
       : DURATIONS[Math.floor(Math.random() * DURATIONS.length)];
+
+    console.log(`Selected: category=${randomCat.main}, sub=${randomSub}, voice=${randomVoice}, scenes=${randomScenes}, duration=${randomDuration}`);
 
     const { data: prevMessages } = await supabase
       .from("messages")
@@ -204,6 +236,7 @@ serve(async (req) => {
 الطول: ${randomDuration}`;
 
     console.log("Sending daily auto-message via User API...");
+    console.log("Message content:", message);
     await sendViaMTKruto(settings as any, message);
 
     await supabase.from("messages").insert({
@@ -224,7 +257,7 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error("Daily send error:", error instanceof Error ? error.message : "Unknown error");
     return new Response(
-      JSON.stringify({ success: false, error: "حدث خطأ أثناء الإرسال التلقائي" }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "حدث خطأ أثناء الإرسال التلقائي" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
