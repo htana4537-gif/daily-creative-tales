@@ -91,6 +91,8 @@ export function TelegramSettings() {
             preferred_scenes_min: preferredScenesMin,
             preferred_scenes_max: preferredScenesMax,
             preferred_duration: preferredDuration ? parseInt(preferredDuration) : null,
+            auto_send_count: autoSendCount,
+            auto_send_frequency: autoSendFrequency,
           },
         },
       });
