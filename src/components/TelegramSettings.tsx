@@ -11,6 +11,7 @@ import { Settings, TestTube, Loader2, CheckCircle, XCircle, ExternalLink, Zap } 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CONTENT_CATEGORIES, VOICE_TYPES, DURATION_OPTIONS } from '@/lib/characters';
+import { WeeklySchedule } from './WeeklySchedule';
 
 export function TelegramSettings() {
   const [apiId, setApiId] = useState('');
