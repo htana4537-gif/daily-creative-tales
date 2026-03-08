@@ -24,6 +24,8 @@ export function TelegramSettings() {
   const [preferredScenesMin, setPreferredScenesMin] = useState(5);
   const [preferredScenesMax, setPreferredScenesMax] = useState(25);
   const [preferredDuration, setPreferredDuration] = useState('');
+  const [autoSendCount, setAutoSendCount] = useState(1);
+  const [autoSendFrequency, setAutoSendFrequency] = useState('daily');
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
@@ -54,6 +56,8 @@ export function TelegramSettings() {
         setPreferredScenesMin(s.preferred_scenes_min ?? 5);
         setPreferredScenesMax(s.preferred_scenes_max ?? 25);
         setPreferredDuration(s.preferred_duration ? String(s.preferred_duration) : '');
+        setAutoSendCount(s.auto_send_count ?? 1);
+        setAutoSendFrequency(s.auto_send_frequency || 'daily');
         if (s.has_session_string) {
           setConnectionStatus('connected');
         }
@@ -87,6 +91,8 @@ export function TelegramSettings() {
             preferred_scenes_min: preferredScenesMin,
             preferred_scenes_max: preferredScenesMax,
             preferred_duration: preferredDuration ? parseInt(preferredDuration) : null,
+            auto_send_count: autoSendCount,
+            auto_send_frequency: autoSendFrequency,
           },
         },
       });
@@ -138,7 +144,7 @@ export function TelegramSettings() {
   const handleTriggerAutoSend = async () => {
     setIsTriggering(true);
     try {
-      const { data, error } = await supabase.functions.invoke('daily-send');
+      const { data, error } = await supabase.functions.invoke('daily-send?force=true');
 
       if (error) throw error;
       if (data && !data.success) throw new Error(data.message || data.error || 'فشل الإرسال');
@@ -259,7 +265,7 @@ export function TelegramSettings() {
             <p className="text-sm font-medium text-muted-foreground">⚙️ تفضيلات الإرسال التلقائي</p>
 
             <div className="space-y-2">
-              <Label htmlFor="autoSendTime">وقت الإرسال اليومي</Label>
+              <Label htmlFor="autoSendTime">وقت بدء الإرسال</Label>
               <Input
                 id="autoSendTime"
                 type="time"
@@ -267,6 +273,36 @@ export function TelegramSettings() {
                 onChange={(e) => setAutoSendTime(e.target.value)}
                 dir="ltr"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>التكرار</Label>
+                <Select value={autoSendFrequency} onValueChange={setAutoSendFrequency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">يومياً</SelectItem>
+                    <SelectItem value="weekly">أسبوعياً</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>عدد الرسائل {autoSendFrequency === 'daily' ? 'في اليوم' : 'في الأسبوع'}</Label>
+                <Select value={String(autoSendCount)} onValueChange={(v) => setAutoSendCount(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} {n === 1 ? 'رسالة' : 'رسائل'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

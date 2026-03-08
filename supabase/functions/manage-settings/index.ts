@@ -86,7 +86,7 @@ serve(async (req) => {
     if (action === "load") {
       const { data, error } = await supabase
         .from("telegram_settings")
-        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string, preferred_categories, preferred_voice, preferred_scenes_min, preferred_scenes_max, preferred_duration")
+        .select("id, chat_id, auto_send_enabled, auto_send_time, api_id, api_hash, session_string, preferred_categories, preferred_voice, preferred_scenes_min, preferred_scenes_max, preferred_duration, auto_send_count, auto_send_frequency")
         .limit(1)
         .single();
 
@@ -111,6 +111,8 @@ serve(async (req) => {
               preferred_scenes_min: data.preferred_scenes_min ?? 5,
               preferred_scenes_max: data.preferred_scenes_max ?? 25,
               preferred_duration: data.preferred_duration || "",
+              auto_send_count: data.auto_send_count ?? 1,
+              auto_send_frequency: data.auto_send_frequency || "daily",
             },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -163,6 +165,8 @@ serve(async (req) => {
       if (inputSettings.preferred_scenes_min !== undefined) settingsToSave.preferred_scenes_min = inputSettings.preferred_scenes_min;
       if (inputSettings.preferred_scenes_max !== undefined) settingsToSave.preferred_scenes_max = inputSettings.preferred_scenes_max;
       if (inputSettings.preferred_duration !== undefined) settingsToSave.preferred_duration = inputSettings.preferred_duration || null;
+      if (inputSettings.auto_send_count !== undefined) settingsToSave.auto_send_count = inputSettings.auto_send_count;
+      if (inputSettings.auto_send_frequency !== undefined) settingsToSave.auto_send_frequency = inputSettings.auto_send_frequency;
 
       if (existing) {
         const { error } = await supabase

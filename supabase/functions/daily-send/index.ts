@@ -124,6 +124,40 @@ serve(async (req) => {
       throw new Error("يرجى إدخال بيانات User API في الإعدادات");
     }
 
+    // Check frequency limits (skip for manual triggers via ?force=true)
+    const url = new URL(req.url);
+    const isForced = url.searchParams.get("force") === "true";
+    const today = new Date().toISOString().split("T")[0];
+    const autoSendCount = settings.auto_send_count ?? 1;
+    const autoSendFrequency = settings.auto_send_frequency || "daily";
+    const sentToday = settings.auto_send_sent_today ?? 0;
+    const lastDate = settings.auto_send_last_date;
+
+    if (!isForced) {
+      // Reset counter if it's a new day
+      if (lastDate !== today) {
+        await supabase.from("telegram_settings").update({
+          auto_send_sent_today: 0,
+          auto_send_last_date: today,
+        }).eq("id", settings.id);
+      } else {
+        // For daily: check if we've hit the daily limit
+        // For weekly: divide count by 7, send max ceil(count/7) per day
+        let dailyLimit = autoSendCount;
+        if (autoSendFrequency === "weekly") {
+          dailyLimit = Math.max(1, Math.ceil(autoSendCount / 7));
+        }
+
+        if (sentToday >= dailyLimit) {
+          console.log(`Daily limit reached: ${sentToday}/${dailyLimit}`);
+          return new Response(
+            JSON.stringify({ success: false, message: `تم الوصول للحد اليومي (${sentToday}/${dailyLimit})` }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // Log all preferences for debugging
     console.log("=== Auto-send preferences ===");
     console.log("preferred_categories:", JSON.stringify(settings.preferred_categories));
@@ -255,7 +289,14 @@ serve(async (req) => {
       status: "auto_sent",
     });
 
-    console.log("Daily auto-message sent successfully:", title);
+    // Update send counter
+    const currentSent = (lastDate === today) ? sentToday + 1 : 1;
+    await supabase.from("telegram_settings").update({
+      auto_send_sent_today: currentSent,
+      auto_send_last_date: today,
+    }).eq("id", settings.id);
+
+    console.log(`Daily auto-message sent successfully (${currentSent}/${autoSendCount}):`, title);
 
     return new Response(
       JSON.stringify({ success: true, message: "تم الإرسال التلقائي بنجاح", character: title }),
