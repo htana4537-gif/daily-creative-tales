@@ -262,6 +262,7 @@ export function TelegramSettings() {
         </div>
 
         {autoSendEnabled && (
+          <>
           <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
             <p className="text-sm font-medium text-muted-foreground">⚙️ تفضيلات الإرسال التلقائي</p>
 
