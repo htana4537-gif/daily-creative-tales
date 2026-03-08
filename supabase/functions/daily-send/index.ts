@@ -289,7 +289,14 @@ serve(async (req) => {
       status: "auto_sent",
     });
 
-    console.log("Daily auto-message sent successfully:", title);
+    // Update send counter
+    const currentSent = (lastDate === today) ? sentToday + 1 : 1;
+    await supabase.from("telegram_settings").update({
+      auto_send_sent_today: currentSent,
+      auto_send_last_date: today,
+    }).eq("id", settings.id);
+
+    console.log(`Daily auto-message sent successfully (${currentSent}/${autoSendCount}):`, title);
 
     return new Response(
       JSON.stringify({ success: true, message: "تم الإرسال التلقائي بنجاح", character: title }),
