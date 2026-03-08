@@ -386,6 +386,14 @@ export function TelegramSettings() {
               </Select>
             </div>
           </div>
+
+            <WeeklySchedule
+              frequency={autoSendFrequency}
+              count={autoSendCount}
+              time={autoSendTime}
+              enabled={autoSendEnabled}
+            />
+          </div>
         )}
 
         <div className="flex gap-2 pt-2 flex-wrap">
