@@ -135,6 +135,29 @@ export function TelegramSettings() {
     }
   };
 
+  const handleTriggerAutoSend = async () => {
+    setIsTriggering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('daily-send');
+
+      if (error) throw error;
+      if (data && !data.success) throw new Error(data.message || data.error || 'فشل الإرسال');
+
+      toast({
+        title: 'تم الإرسال التلقائي! ✨',
+        description: `تم إرسال: ${data.character || ''}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'فشل الإرسال التلقائي',
+        description: error.message || 'حدث خطأ',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
