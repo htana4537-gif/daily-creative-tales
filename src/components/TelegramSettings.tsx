@@ -351,7 +351,7 @@ export function TelegramSettings() {
           </div>
         )}
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-2 flex-wrap">
           <Button onClick={handleSave} disabled={isSaving} className="flex-1">
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -370,6 +370,20 @@ export function TelegramSettings() {
               <>
                 <TestTube className="ml-2 h-4 w-4" />
                 اختبار
+              </>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleTriggerAutoSend}
+            disabled={isTriggering || !hasCredentials}
+          >
+            {isTriggering ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Zap className="ml-2 h-4 w-4" />
+                تشغيل الإرسال التلقائي الآن
               </>
             )}
           </Button>
