@@ -111,6 +111,8 @@ serve(async (req) => {
               preferred_scenes_min: data.preferred_scenes_min ?? 5,
               preferred_scenes_max: data.preferred_scenes_max ?? 25,
               preferred_duration: data.preferred_duration || "",
+              auto_send_count: data.auto_send_count ?? 1,
+              auto_send_frequency: data.auto_send_frequency || "daily",
             },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
